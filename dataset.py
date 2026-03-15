@@ -1,8 +1,11 @@
 from typing import List, Tuple, Any, Optional
+from torch._higher_order_ops.cond import trace_cond
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 import os
 import random
+import torch
+from PIL import Image
 
 def load_dataset(data_dir: str) -> Tuple[List[str], List[int]]:
     
@@ -62,3 +65,91 @@ def split_data(
         (val_paths, val_labels),
         (test_paths, test_labels), 
     )
+
+
+
+class BaseMetricDataset(Dataset):
+   
+    def __init__(self, image_paths: List[str], labels: List[int], transforms: Optional[transforms.Compose]=None) -> None:
+        super().__init__()
+        self.image_paths = image_paths
+        self.labels = labels
+        self.transforms = transforms
+         
+        self.label_to_idx = {}
+        for index, label in enumerate(labels):
+            if label not in self.label_to_idx:
+                self.label_to_idx[label] = []
+            self.label_to_idx[label].append(index)
+            
+        self.classes = list(self.label_to_idx.keys())
+
+    def __len__(self) -> int:
+        return len(self.image_paths)
+
+
+class ContrastiveDataset(BaseMetricDataset):
+    
+    def __init__(self, image_paths: List[str], labels: List[int], transforms: Optional[transforms.Compose]=None, prob: float=0.5) -> None:
+        super().__init__(image_paths, labels, transforms)
+        self.prob = prob
+
+    def __getitem__(self, index: int) -> Tuple[Any, Any, torch.Tensor]:
+        img1_path = self.image_paths[index]
+        label1 = self.labels[index]
+        
+        # positive pair
+        if random.random() < self.prob:
+            index2 = random.choice(self.label_to_idx[label1])
+            label = 1.0
+        else:
+            # Negative pair
+            different_class = random.choice(self.classes)
+            while different_class == label1:
+                different_class = random.choice(self.classes)
+            
+            index2 = random.choice(self.label_to_idx[different_class])
+            label = 0.0
+
+        img2_path = self.image_paths[index2]
+
+        img1 = Image.open(img1_path).convert("RGB")
+        img2 = Image.open(img2_path).convert("RGB")
+
+        if self.transforms:
+            img1 = self.transforms(img1)
+            img2 = self.transforms(img2)
+
+        return img1, img2, torch.tensor(label, dtype=torch.float32)
+
+
+class TripletDataset(BaseMetricDataset):
+    
+    def __getitem__(self, index: int) -> Tuple[Any, Any, Any]:
+        anchor_path = self.image_paths[index]
+        anchor_label = self.labels[index]
+
+        # Sample Positive
+        positive_indices = self.label_to_idx[anchor_label]
+        pos_index = random.choice(positive_indices)
+        while pos_index == index and len(positive_indices) > 1:
+            pos_index = random.choice(positive_indices)
+        positive_path = self.image_paths[pos_index]
+
+        # Sample Negative
+        negative_class = random.choice(self.classes)
+        while negative_class == anchor_label:
+            negative_class = random.choice(self.classes)
+        neg_index = random.choice(self.label_to_idx[negative_class])
+        negative_path = self.image_paths[neg_index]
+
+        anchor_img = Image.open(anchor_path).convert("RGB")
+        positive_img = Image.open(positive_path).convert("RGB")
+        negative_img = Image.open(negative_path).convert("RGB")
+
+        if self.transforms:
+            anchor_img = self.transforms(anchor_img)
+            positive_img = self.transforms(positive_img)
+            negative_img = self.transforms(negative_img)
+
+        return anchor_img, positive_img, negative_img
