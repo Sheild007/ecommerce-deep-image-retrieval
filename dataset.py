@@ -12,7 +12,6 @@ def load_dataset(data_dir: str) -> Tuple[List[str], List[int]]:
     image_paths: List[str] = []
     labels: List[int] = []
     
-    
     valid_folders = [f for f in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, f))]
     valid_folders.sort() 
     class_to_idx = {cls_name: idx for idx, cls_name in enumerate(valid_folders)}
@@ -65,7 +64,6 @@ def split_data(
         (val_paths, val_labels),
         (test_paths, test_labels), 
     )
-
 
 
 class BaseMetricDataset(Dataset):
