@@ -5,16 +5,16 @@ import torchvision.models as models
 
 
 class EmbeddingNet(nn.Module):
-    def __init__(self, embeding_dim:int=128) -> None:
+    def __init__(self, embedding_dim:int=128) -> None:
         super().__init__()
         #Resnet50 with pretrained weights as backbone feature_extractor
-        backbone=models.Resnet50(weights=models.Resnet50_weights.DEFAULT)
+        backbone=models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
         input_dim=backbone.fc.in_features 
         #striping final fc layer from backbone 
         backbone.fc=nn.Identity()
         self.feature_extractor=backbone
         #Fully Connected Layer(2048 -> 128)
-        self.fc=nn.Linear(input_dim,embeding_dim)
+        self.fc=nn.Linear(input_dim,embedding_dim)
 
     def forward(self,x):
         # step1: extaract features using Resnet50
