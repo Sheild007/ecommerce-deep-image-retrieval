@@ -19,11 +19,11 @@ class ContrastiveLoss(nn.Module):
 
 
 class TripletLoss(nn.Module):
-      def __init__(self, margin: float = 0.2) -> None:
+    def __init__(self, margin: float = 0.2) -> None:
         super().__init__()
         self.margin = margin
-         
-    def forward(self, anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor) -> torch.Tensor:   
+
+    def forward(self, anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor) -> torch.Tensor:
         # D(a, p) + margin < D(a, n)
         dist1=F.pairwise_distance(anchor,positive)
         dist2=F.pairwise_distance(anchor,negative)
@@ -32,7 +32,7 @@ class TripletLoss(nn.Module):
         return loss
 
 class BatchHardTripletLoss(nn.Module):
-        def __init__(self, margin: float = 0.2) -> None:
+    def __init__(self, margin: float = 0.2) -> None:
         super().__init__()
         self.margin = margin
 
