@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
 
 from model import EmbeddingNet
 from dataset import split_data, ContrastiveDataset
@@ -33,6 +34,21 @@ def get_val_transforms():
         )
     ])
 
+def save_loss_plot(train_losses, val_losses, epochs, output_path='graphs/loss_plot.png', title='Training and Validation Loss', xlabel='Epoch', ylabel='Loss'):
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(1, epochs+1), train_losses, label='Training Loss', marker='o', linewidth=2)
+    plt.plot(range(1, epochs+1), val_losses, label='Validation Loss', marker='s', linewidth=2)
+    plt.xlabel(xlabel, fontsize=12)
+    plt.ylabel(ylabel, fontsize=12)
+    plt.title(title, fontsize=14)
+    plt.legend(fontsize=11)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300)
+    print(f"Plot saved to {output_path}")
+    plt.close()
+
 def train_contrastive(data_dir:str ='caltech-101',output_dir:str ='checkpoints',
     epochs:int =30,batch_size:int=32,lr:float=0.001,margin:float=1.0,device:str= None) -> None:
    
@@ -61,8 +77,12 @@ def train_contrastive(data_dir:str ='caltech-101',output_dir:str ='checkpoints',
     criterion=ContrastiveLoss(margin=margin)
     
     os.makedirs(output_dir, exist_ok=True)
+    os.makedirs('graphs', exist_ok=True)
     checkpoint = os.path.join(output_dir, 'contrastive_model_best.pt')
     best_val_loss = float('inf')
+    
+    train_losses = []
+    val_losses = []
     
     print(f"Contrastive Learning:Training for {epochs} epochs...")
     for epoch in range(epochs):
@@ -101,11 +121,20 @@ def train_contrastive(data_dir:str ='caltech-101',output_dir:str ='checkpoints',
         
         val_loss /= len(val_loader)
         
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             torch.save(model.state_dict(), checkpoint)
             print(f"Best model saved with val_loss={val_loss:.6f}")
 
         print(f"Epoch {epoch+1}/{epochs} - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
+ 
+    save_loss_plot(train_losses, val_losses, epochs, output_path='graphs/loss_plot.png')
     
     return checkpoint
+
+
+
+checkpoint1 = train_contrastive()
