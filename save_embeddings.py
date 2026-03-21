@@ -29,7 +29,7 @@ def main():
     ]
     
     for checkpoint_file, exp_name in experiments:
-        checkpoint_path = os.path.join(args.checkpoint_dir, checkpoint_file)
+        checkpoint_path = os.path.join(args.weights_dir, checkpoint_file)
         
         if not os.path.exists(checkpoint_path):
             print(f"Checkpoint not found: {checkpoint_path}")
