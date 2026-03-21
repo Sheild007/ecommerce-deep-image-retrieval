@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from typing import Union, List
 from PIL import Image
-
+import os
 from model import EmbeddingNet
 from train import get_val_transforms
 
@@ -54,3 +54,13 @@ def precompute_dataset_embeddings(image_paths: List[str], checkpoint_path: str, 
     return np.vstack(embeddings)
 
 
+def save_embeddings(embeddings: np.ndarray, save_path: str) -> None:
+    os.makedirs(os.path.dirname(save_path) or 'embeddings', exist_ok=True)
+    np.save(save_path, embeddings)
+    print(f"Embeddings saved to {save_path}")
+
+
+def load_embeddings(save_path: str) -> np.ndarray:
+    embeddings = np.load(save_path)
+    print(f"Embeddings loaded from {save_path}")
+    return embeddings
