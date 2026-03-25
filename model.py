@@ -16,7 +16,7 @@ class EmbeddingNet(nn.Module):
         #Fully Connected Layer(2048 -> 128)
         self.fc=nn.Linear(input_dim,embedding_dim)
 
-    def forward(self,x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # step1: extaract features using Resnet50
         features=self.feature_extractor(x)
         #step2: prohect fetaures to 128 embedding vector 

@@ -6,7 +6,7 @@ import os
 from model import EmbeddingNet
 from train import get_val_transforms
 
-def load_model(checkpoint_path: str, device: str = None):
+def load_model(checkpoint_path: str, device: str = None) -> tuple[EmbeddingNet, str]:
     if device is None:
        if torch.cuda.is_available():
              device = 'cuda'  
