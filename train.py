@@ -7,10 +7,10 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
 from model import EmbeddingNet
-from dataset import split_data, ContrastiveDataset
-from loss import ContrastiveLoss
+from dataset import split_data, ContrastiveDataset, TripletDataset
+from loss import ContrastiveLoss, TripletLoss, BatchHardTripletLoss
 
-def get_transforms():
+def get_transforms() -> transforms.Compose:
     # return data augmentation and normalization transforms
     return transforms.Compose([
         transforms.Resize((224, 224)), #resnet50 accept these dims
@@ -23,7 +23,7 @@ def get_transforms():
         )
     ])
 
-def get_val_transforms():
+def get_val_transforms() -> transforms.Compose:
     #return normalization transforms
     return transforms.Compose([          
         transforms.Resize((224, 224)),  #resnet50 accept these dims
@@ -34,8 +34,9 @@ def get_val_transforms():
         )
     ])
 
-def save_loss_plot(train_losses, val_losses, epochs, output_path='graphs/loss_plot.png', title='Training and Validation Loss', xlabel='Epoch', ylabel='Loss'):
-
+def save_loss_plot(train_losses: list, val_losses: list, epochs: int, output_path: str = 'graphs/loss_plot.png', title: str = 'Training and Validation Loss', xlabel: str = 'Epoch', ylabel: str = 'Loss') -> None:
+    """Save training and validation loss plots to file."""
+    os.makedirs(os.path.dirname(output_path) or 'graphs', exist_ok=True)
     plt.figure(figsize=(10, 6))
     plt.plot(range(1, epochs+1), train_losses, label='Training Loss', marker='o', linewidth=2)
     plt.plot(range(1, epochs+1), val_losses, label='Validation Loss', marker='s', linewidth=2)
@@ -49,8 +50,8 @@ def save_loss_plot(train_losses, val_losses, epochs, output_path='graphs/loss_pl
     print(f"Plot saved to {output_path}")
     plt.close()
 
-def train_contrastive(data_dir:str ='caltech-101',output_dir:str ='checkpoints',
-    epochs:int =30,batch_size:int=32,lr:float=0.001,margin:float=1.0,device:str= None) -> None:
+def train_contrastive(data_dir: str = 'caltech-101', output_dir: str = 'weights',
+    epochs: int = 30, batch_size: int = 64, lr: float = 0.001, margin: float = 1.0, device: str = None) -> str:
    
     if device is None:
        if torch.cuda.is_available():
@@ -77,7 +78,6 @@ def train_contrastive(data_dir:str ='caltech-101',output_dir:str ='checkpoints',
     criterion=ContrastiveLoss(margin=margin)
     
     os.makedirs(output_dir, exist_ok=True)
-    os.makedirs('graphs', exist_ok=True)
     checkpoint = os.path.join(output_dir, 'contrastive_model_best.pt')
     best_val_loss = float('inf')
     
@@ -130,11 +130,91 @@ def train_contrastive(data_dir:str ='caltech-101',output_dir:str ='checkpoints',
             print(f"Best model saved with val_loss={val_loss:.6f}")
 
         print(f"Epoch {epoch+1}/{epochs} - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
- 
-    save_loss_plot(train_losses, val_losses, epochs, output_path='graphs/loss_plot.png')
+    
+    save_loss_plot(train_losses, val_losses, epochs, output_path='graphs/contrastive/loss_plot.png')
     
     return checkpoint
 
-
-
-checkpoint1 = train_contrastive()
+def train_triplet_random(data_dir: str = 'caltech-101', output_dir: str = 'weights',
+    epochs: int = 30, batch_size: int = 64, lr: float = 0.001, margin: float = 0.2, device: str = None) -> str:
+    
+    if device is None:
+       if torch.cuda.is_available():
+             device = 'cuda'  
+       else:
+            device = 'cpu' 
+    
+    
+    train_data, val_data, _ = split_data(data_dir)
+    
+    train_transforms = get_transforms()
+    val_transforms = get_val_transforms()
+    
+    train_dataset = TripletDataset(train_data[0], train_data[1], transforms=train_transforms)
+    val_dataset = TripletDataset(val_data[0], val_data[1], transforms=val_transforms)
+    
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    
+    model = EmbeddingNet().to(device)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    criterion = TripletLoss(margin=margin)
+    
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs('graphs', exist_ok=True)
+    checkpoint = os.path.join(output_dir, 'triplet_random_model_best.pt')
+    best_val_loss = float('inf')
+    
+    train_losses = []
+    val_losses = []
+    
+    print(f"Triplet Loss (Random): Training for {epochs} epochs...")
+    for epoch in range(epochs):
+        model.train()
+        train_loss = 0.0
+        for anchor, positive, negative in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}"):
+            anchor = anchor.to(device)
+            positive = positive.to(device)
+            negative = negative.to(device)
+            
+            optimizer.zero_grad()
+            emb_anchor = model(anchor)
+            emb_pos = model(positive)
+            emb_neg = model(negative)
+            loss = criterion(emb_anchor, emb_pos, emb_neg)
+            
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item()
+        
+        train_loss /= len(train_loader)
+        
+        model.eval()
+        val_loss = 0.0
+        with torch.no_grad():
+            for anchor, positive, negative in val_loader:
+                anchor = anchor.to(device)
+                positive = positive.to(device)
+                negative = negative.to(device)
+                
+                emb_anchor = model(anchor)
+                emb_pos = model(positive)
+                emb_neg = model(negative)
+                loss = criterion(emb_anchor, emb_pos, emb_neg)
+                val_loss += loss.item()
+        
+        val_loss /= len(val_loader)
+        
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            torch.save(model.state_dict(), checkpoint)
+            print(f"Best model saved with val_loss={val_loss:.6f}")
+        
+        print(f"Epoch {epoch+1}/{epochs} - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
+    
+    save_loss_plot(train_losses, val_losses, epochs, output_path='graphs/triplet_random/loss_plot.png')
+    
+    return checkpoint
