@@ -10,6 +10,11 @@ from model import EmbeddingNet
 from dataset import split_data, ContrastiveDataset, TripletDataset
 from loss import ContrastiveLoss, TripletLoss, BatchHardTripletLoss
 
+GLOBAL_BATCH_SIZE = 64
+GLOBAL_LR = 0.001
+GLOBAL_WEIGHT_DECAY = 1e-4
+EARLY_STOPPING_PATIENCE = 5
+
 def get_transforms() -> transforms.Compose:
     # return data augmentation and normalization transforms
     return transforms.Compose([
@@ -51,7 +56,7 @@ def save_loss_plot(train_losses: list, val_losses: list, epochs: int, output_pat
     plt.close()
 
 def train_contrastive(data_dir: str = 'caltech-101', output_dir: str = 'weights',
-    epochs: int = 30, batch_size: int = 64, lr: float = 0.001, margin: float = 1.0, device: str = None) -> str:
+    epochs: int = 30, batch_size: int = GLOBAL_BATCH_SIZE, lr: float = GLOBAL_LR, margin: float = 1.0, device: str = None) -> str:
    
     if device is None:
        if torch.cuda.is_available():
@@ -74,17 +79,18 @@ def train_contrastive(data_dir: str = 'caltech-101', output_dir: str = 'weights'
     
     #loading the model
     model=EmbeddingNet().to(device)
-    optimizer=optim.Adam(model.parameters(),lr=lr)
+    optimizer=optim.Adam(model.parameters(),lr=lr,weight_decay=GLOBAL_WEIGHT_DECAY)
     criterion=ContrastiveLoss(margin=margin)
     
     os.makedirs(output_dir, exist_ok=True)
     checkpoint = os.path.join(output_dir, 'contrastive_model_best.pt')
     best_val_loss = float('inf')
+    patience_counter = 0
     
     train_losses = []
     val_losses = []
     
-    print(f"Contrastive Learning:Training for {epochs} epochs...")
+    print(f"Contrastive Learning: Training for {epochs} epochs (Early Stopping Patience: {EARLY_STOPPING_PATIENCE})...")
     for epoch in range(epochs):
         model.train() # swtich model to train phase
         train_loss = 0.0
@@ -126,17 +132,23 @@ def train_contrastive(data_dir: str = 'caltech-101', output_dir: str = 'weights'
         
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            patience_counter = 0
             torch.save(model.state_dict(), checkpoint)
             print(f"Best model saved with val_loss={val_loss:.6f}")
+        else:
+            patience_counter += 1
+            if patience_counter >= EARLY_STOPPING_PATIENCE:
+                print(f"Early stopping at epoch {epoch+1} (patience={EARLY_STOPPING_PATIENCE})")
+                break
 
         print(f"Epoch {epoch+1}/{epochs} - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
     
-    save_loss_plot(train_losses, val_losses, epochs, output_path='graphs/contrastive/loss_plot.png')
+    save_loss_plot(train_losses, val_losses, len(train_losses), output_path='graphs/contrastive/loss_plot.png')
     
     return checkpoint
 
 def train_triplet_random(data_dir: str = 'caltech-101', output_dir: str = 'weights',
-    epochs: int = 30, batch_size: int = 64, lr: float = 0.001, margin: float = 0.2, device: str = None) -> str:
+    epochs: int = 30, batch_size: int = GLOBAL_BATCH_SIZE, lr: float = GLOBAL_LR, margin: float = 0.2, device: str = None) -> str:
     
     if device is None:
        if torch.cuda.is_available():
@@ -157,18 +169,19 @@ def train_triplet_random(data_dir: str = 'caltech-101', output_dir: str = 'weigh
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
     
     model = EmbeddingNet().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=GLOBAL_WEIGHT_DECAY)
     criterion = TripletLoss(margin=margin)
     
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs('graphs', exist_ok=True)
     checkpoint = os.path.join(output_dir, 'triplet_random_model_best.pt')
     best_val_loss = float('inf')
+    patience_counter = 0
     
     train_losses = []
     val_losses = []
     
-    print(f"Triplet Loss (Random): Training for {epochs} epochs...")
+    print(f"Triplet Loss (Random): Training for {epochs} epochs (Early Stopping Patience: {EARLY_STOPPING_PATIENCE})...")
     for epoch in range(epochs):
         model.train()
         train_loss = 0.0
@@ -210,17 +223,23 @@ def train_triplet_random(data_dir: str = 'caltech-101', output_dir: str = 'weigh
         
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            patience_counter = 0
             torch.save(model.state_dict(), checkpoint)
             print(f"Best model saved with val_loss={val_loss:.6f}")
+        else:
+            patience_counter += 1
+            if patience_counter >= EARLY_STOPPING_PATIENCE:
+                print(f"Early stopping at epoch {epoch+1} (patience={EARLY_STOPPING_PATIENCE})")
+                break
         
         print(f"Epoch {epoch+1}/{epochs} - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
     
-    save_loss_plot(train_losses, val_losses, epochs, output_path='graphs/triplet_random/loss_plot.png')
+    save_loss_plot(train_losses, val_losses, len(train_losses), output_path='graphs/triplet_random/loss_plot.png')
     
     return checkpoint
 
 def train_triplet_hard(data_dir: str = 'caltech-101', output_dir: str = 'weights',
-    epochs: int = 30, batch_size: int = 64, lr: float = 0.001, margin: float = 0.2, device: str = None) -> str:
+    epochs: int = 30, batch_size: int = GLOBAL_BATCH_SIZE, lr: float = GLOBAL_LR, margin: float = 0.2, device: str = None) -> str:
     
     if device is None:
        if torch.cuda.is_available():
@@ -240,18 +259,19 @@ def train_triplet_hard(data_dir: str = 'caltech-101', output_dir: str = 'weights
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
     
     model = EmbeddingNet().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=lr)
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=GLOBAL_WEIGHT_DECAY)
     criterion = BatchHardTripletLoss(margin=margin)
     
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs('graphs', exist_ok=True)
     checkpoint = os.path.join(output_dir, 'triplet_hard_model_best.pt')
     best_val_loss = float('inf')
+    patience_counter = 0
     
     train_losses = []
     val_losses = []
     
-    print(f"Triplet Loss (Hard Mining): Training for {epochs} epochs...")
+    print(f"Triplet Loss (Hard Mining): Training for {epochs} epochs (Early Stopping Patience: {EARLY_STOPPING_PATIENCE})...")
     for epoch in range(epochs):
         model.train()
         train_loss = 0.0
@@ -293,12 +313,18 @@ def train_triplet_hard(data_dir: str = 'caltech-101', output_dir: str = 'weights
         
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            patience_counter = 0
             torch.save(model.state_dict(), checkpoint)
             print(f"Best model saved with val_loss={val_loss:.6f}")
+        else:
+            patience_counter += 1
+            if patience_counter >= EARLY_STOPPING_PATIENCE:
+                print(f"Early stopping at epoch {epoch+1} (patience={EARLY_STOPPING_PATIENCE})")
+                break
         
         print(f"Epoch {epoch+1}/{epochs} - Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}")
     
-    save_loss_plot(train_losses, val_losses, epochs, output_path='graphs/triplet_hard/loss_plot.png')
+    save_loss_plot(train_losses, val_losses, len(train_losses), output_path='graphs/triplet_hard/loss_plot.png')
     
     return checkpoint
 
