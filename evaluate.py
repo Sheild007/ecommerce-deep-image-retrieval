@@ -2,14 +2,23 @@ import os
 import argparse
 import numpy as np
 from retrieval import recall_at_k, plot_tsne, show_retrieval
+from dataset import split_data
 
-def evaluate_experiment(exp_name: str, embeddings_dir: str, graphs_dir: str) -> dict:
+def evaluate_experiment(exp_name: str, embeddings_dir: str, graphs_dir: str, data_dir: str = None, n_queries: int = 10, query_indices: list = None) -> dict:
     print(f"Evaluating: {exp_name}")
 
     # Load embeddings and labels
     test_emb = np.load(os.path.join(embeddings_dir, 'embeddings_test.npy'))
     test_labels = np.load(os.path.join(embeddings_dir, 'labels_test.npy'))
-    test_paths = np.load(os.path.join(embeddings_dir, 'paths_test.npy'), allow_pickle=True)
+    
+
+    if data_dir and os.path.exists(data_dir):
+        _, _, test_data = split_data(data_dir)
+        test_paths, _ = test_data
+        print(f"Using {len(test_paths)} local paths from {data_dir}")
+    else:
+        test_paths = np.load(os.path.join(embeddings_dir, 'paths_test.npy'), allow_pickle=True)
+        print(f"Using {len(test_paths)} saved paths")
     
     exp_output_dir = os.path.join(graphs_dir, exp_name)
     os.makedirs(exp_output_dir, exist_ok=True)
@@ -31,8 +40,11 @@ def evaluate_experiment(exp_name: str, embeddings_dir: str, graphs_dir: str) -> 
     retrieval_dir = os.path.join(exp_output_dir, 'retrieval')
     os.makedirs(retrieval_dir, exist_ok=True)
     
-    n_queries = min(10, len(test_paths))
-    query_indices = np.linspace(0, len(test_paths)-1, n_queries, dtype=int)
+    if query_indices is None:
+        n_queries = min(n_queries, len(test_paths))
+        query_indices = np.linspace(0, len(test_paths)-1, n_queries, dtype=int)
+    else:
+        query_indices = np.array(query_indices, dtype=int)
     
     for i, query_idx in enumerate(query_indices):
         output_path = os.path.join(retrieval_dir, f'query_{i:02d}.png')
@@ -51,8 +63,11 @@ def evaluate_experiment(exp_name: str, embeddings_dir: str, graphs_dir: str) -> 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='Evaluate saved embeddings')
+    parser.add_argument('--data-dir', default='caltech-101', help='Path to local dataset directory (default: caltech-101)')
     parser.add_argument('--embeddings-dir', default='embeddings', help='Directory with precomputed embeddings')
     parser.add_argument('--output-dir', default='graphs', help='Directory to save results')
+    parser.add_argument('--n-queries', type=int, default=10, help='Number of query samples to visualize (default: 10)')
+    parser.add_argument('--query-indices', type=int, nargs='+', default=None, help='Specific indices to visualize (overrides --n-queries)')
     
     args = parser.parse_args()
     
@@ -67,7 +82,9 @@ def main() -> None:
             print("Run: python save_embeddings.py")
             continue
         
-        results[exp_name] = evaluate_experiment(exp_name, exp_embeddings_dir, args.output_dir)
+        results[exp_name] = evaluate_experiment(exp_name, exp_embeddings_dir, args.output_dir, 
+                                               data_dir=args.data_dir,
+                                               n_queries=args.n_queries, query_indices=args.query_indices)
     
     print("\nEvaluation Summary:")
     print(f"{'Model':<20} {'Recall@1':<12} {'Recall@5':<12} {'Recall@10':<12}")
