@@ -42,9 +42,12 @@ Options:
 Evaluate saved embeddings:
 
 ```bash
-python evaluate.py --embeddings-dir embeddings --data-dir caltech-101
+python evaluate.py --data-dir caltech-101 --embeddings-dir embeddings --output-dir graphs
 ```
 
 Options:
-- `--embeddings-dir`: Directory with saved embeddings (default: embeddings)
-- `--data-dir`: Path to dataset (default: caltech-101)
+- `--data-dir`: Path to local dataset directory (default: caltech-101)
+- `--embeddings-dir`: Directory with precomputed embeddings (default: embeddings)
+- `--output-dir`: Directory to save results (default: graphs)
+- `--n-queries`: Number of query samples to visualize (default: 10)
+- `--query-indices`: Specific indices to visualize (overrides --n-queries)
