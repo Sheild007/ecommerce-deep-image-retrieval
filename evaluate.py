@@ -10,15 +10,24 @@ def evaluate_experiment(exp_name: str, embeddings_dir: str, graphs_dir: str, dat
     # Load embeddings and labels
     test_emb = np.load(os.path.join(embeddings_dir, 'embeddings_test.npy'))
     test_labels = np.load(os.path.join(embeddings_dir, 'labels_test.npy'))
+    test_paths = np.load(os.path.join(embeddings_dir, 'paths_test.npy'), allow_pickle=True)
     
-
-    if data_dir and os.path.exists(data_dir):
-        _, _, test_data = split_data(data_dir)
-        test_paths, _ = test_data
-        print(f"Using {len(test_paths)} local paths from {data_dir}")
-    else:
-        test_paths = np.load(os.path.join(embeddings_dir, 'paths_test.npy'), allow_pickle=True)
-        print(f"Using {len(test_paths)} saved paths")
+    # Fix paths: extract class/image from old paths and reconstruct with local dir
+    if data_dir:
+        test_paths_fixed = []
+        for p in test_paths:
+            if isinstance(p, (str, np.str_)):
+                p_str = str(p)
+                # Extract the last two parts: class_name/image_name.jpg
+                parts = p_str.split('/')
+                if len(parts) >= 2:
+                    class_name = parts[-2]
+                    image_name = parts[-1]
+                    p_str = os.path.join(data_dir, class_name, image_name)
+                test_paths_fixed.append(p_str)
+            else:
+                test_paths_fixed.append(p)
+        test_paths = np.array(test_paths_fixed, dtype=object)
     
     exp_output_dir = os.path.join(graphs_dir, exp_name)
     os.makedirs(exp_output_dir, exist_ok=True)
