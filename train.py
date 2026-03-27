@@ -57,7 +57,7 @@ def save_loss_plot(train_losses: list, val_losses: list, epochs: int, output_pat
     plt.close()
 
 def train_contrastive(data_dir: str = 'caltech-101', output_dir: str = 'weights',
-    epochs: int = 30, batch_size: int = GLOBAL_BATCH_SIZE, lr: float = GLOBAL_LR, margin: float = 1.0, device: str = None) -> str:
+    epochs: int = 30, batch_size: int = GLOBAL_BATCH_SIZE, lr: float = GLOBAL_LR, weight_decay: float = GLOBAL_WEIGHT_DECAY, margin: float = 1.0, device: str = None) -> str:
    
     if device is None:
        if torch.cuda.is_available():
@@ -80,7 +80,7 @@ def train_contrastive(data_dir: str = 'caltech-101', output_dir: str = 'weights'
     
     #loading the model
     model=EmbeddingNet().to(device)
-    optimizer=optim.Adam(model.parameters(),lr=lr,weight_decay=GLOBAL_WEIGHT_DECAY)
+    optimizer=optim.Adam(model.parameters(),lr=lr,weight_decay=weight_decay)
     criterion=ContrastiveLoss(margin=margin)
     
     os.makedirs(output_dir, exist_ok=True)
@@ -149,7 +149,7 @@ def train_contrastive(data_dir: str = 'caltech-101', output_dir: str = 'weights'
     return checkpoint
 
 def train_triplet_random(data_dir: str = 'caltech-101', output_dir: str = 'weights',
-    epochs: int = 30, batch_size: int = GLOBAL_BATCH_SIZE, lr: float = GLOBAL_LR, margin: float = 0.2, device: str = None) -> str:
+    epochs: int = 30, batch_size: int = GLOBAL_BATCH_SIZE, lr: float = GLOBAL_LR, weight_decay: float = GLOBAL_WEIGHT_DECAY, margin: float = 0.2, device: str = None) -> str:
     
     if device is None:
        if torch.cuda.is_available():
@@ -170,7 +170,7 @@ def train_triplet_random(data_dir: str = 'caltech-101', output_dir: str = 'weigh
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
     
     model = EmbeddingNet().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=GLOBAL_WEIGHT_DECAY)
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = TripletLoss(margin=margin)
     
     os.makedirs(output_dir, exist_ok=True)
@@ -240,7 +240,7 @@ def train_triplet_random(data_dir: str = 'caltech-101', output_dir: str = 'weigh
     return checkpoint
 
 def train_triplet_hard(data_dir: str = 'caltech-101', output_dir: str = 'weights',
-    epochs: int = 30, batch_size: int = GLOBAL_BATCH_SIZE, lr: float = GLOBAL_LR, margin: float = 0.2, device: str = None) -> str:
+    epochs: int = 30, batch_size: int = GLOBAL_BATCH_SIZE, lr: float = GLOBAL_LR, weight_decay: float = GLOBAL_WEIGHT_DECAY, margin: float = 0.2, device: str = None) -> str:
     
     if device is None:
        if torch.cuda.is_available():
@@ -260,7 +260,7 @@ def train_triplet_hard(data_dir: str = 'caltech-101', output_dir: str = 'weights
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
     
     model = EmbeddingNet().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=GLOBAL_WEIGHT_DECAY)
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     criterion = BatchHardTripletLoss(margin=margin)
     
     os.makedirs(output_dir, exist_ok=True)
@@ -281,12 +281,17 @@ def train_triplet_hard(data_dir: str = 'caltech-101', output_dir: str = 'weights
             positive = positive.to(device)
             negative = negative.to(device)
             
-            emb_anchor = model(anchor)
-            emb_pos = model(positive)
-            emb_neg = model(negative)
+            # Stack embeddings for batch hard triplet loss
+            embeddings = torch.cat([anchor, positive, negative], dim=0)
+            labels_anchor = torch.arange(anchor.size(0), device=device)
+            labels_pos = torch.arange(anchor.size(0), device=device)
+            labels_neg = torch.arange(anchor.size(0), device=device)
+            labels = torch.cat([labels_anchor, labels_pos, labels_neg], dim=0)
+            
+            embeddings_pred = model(embeddings)
             
             optimizer.zero_grad()
-            loss = criterion(emb_anchor, emb_pos, emb_neg)
+            loss = criterion(embeddings_pred, labels)
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
@@ -301,10 +306,14 @@ def train_triplet_hard(data_dir: str = 'caltech-101', output_dir: str = 'weights
                 positive = positive.to(device)
                 negative = negative.to(device)
                 
-                emb_anchor = model(anchor)
-                emb_pos = model(positive)
-                emb_neg = model(negative)
-                loss = criterion(emb_anchor, emb_pos, emb_neg)
+                embeddings = torch.cat([anchor, positive, negative], dim=0)
+                labels_anchor = torch.arange(anchor.size(0), device=device)
+                labels_pos = torch.arange(anchor.size(0), device=device)
+                labels_neg = torch.arange(anchor.size(0), device=device)
+                labels = torch.cat([labels_anchor, labels_pos, labels_neg], dim=0)
+                
+                embeddings_pred = model(embeddings)
+                loss = criterion(embeddings_pred, labels)
                 val_loss += loss.item()
         
         val_loss /= len(val_loader)
@@ -328,5 +337,7 @@ def train_triplet_hard(data_dir: str = 'caltech-101', output_dir: str = 'weights
     save_loss_plot(train_losses, val_losses, len(train_losses), output_path='graphs/triplet_hard/loss_plot.png')
     
     return checkpoint
+
+
 
 
