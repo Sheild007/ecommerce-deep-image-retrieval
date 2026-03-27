@@ -91,26 +91,17 @@ def generate_and_save_embeddings(args: argparse.Namespace) -> dict:
         )
         
         print("Saving embeddings...")
-        save_embeddings(
-            train_emb, train_labels, train_paths, 
-            os.path.join(exp_output_dir, 'embeddings_train'),
-            os.path.join(exp_output_dir, 'labels_train'),
-            os.path.join(exp_output_dir, 'paths_train')
-        )
+        save_embeddings(train_emb, os.path.join(exp_output_dir, 'embeddings_train.npy'))
+        np.save(os.path.join(exp_output_dir, 'labels_train.npy'), train_labels)
+        np.save(os.path.join(exp_output_dir, 'paths_train.npy'), train_paths)
         
-        save_embeddings(
-            val_emb, val_labels, val_paths,
-            os.path.join(exp_output_dir, 'embeddings_val'),
-            os.path.join(exp_output_dir, 'labels_val'),
-            os.path.join(exp_output_dir, 'paths_val')
-        )
+        save_embeddings(val_emb, os.path.join(exp_output_dir, 'embeddings_val.npy'))
+        np.save(os.path.join(exp_output_dir, 'labels_val.npy'), val_labels)
+        np.save(os.path.join(exp_output_dir, 'paths_val.npy'), val_paths)
         
-        save_embeddings(
-            test_emb, test_labels, test_paths,
-            os.path.join(exp_output_dir, 'embeddings_test'),
-            os.path.join(exp_output_dir, 'labels_test'),
-            os.path.join(exp_output_dir, 'paths_test')
-        )
+        save_embeddings(test_emb, os.path.join(exp_output_dir, 'embeddings_test.npy'))
+        np.save(os.path.join(exp_output_dir, 'labels_test.npy'), test_labels)
+        np.save(os.path.join(exp_output_dir, 'paths_test.npy'), test_paths)
         
         embeddings_data[exp_name] = {
             'test_emb': test_emb,
