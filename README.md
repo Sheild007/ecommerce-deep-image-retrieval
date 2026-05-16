@@ -1,53 +1,92 @@
-# Deep Metric Learning for Image Retrieval
+# E-Commerce Deep Image Retrieval
 
-## Installation
+Visual search for e-commerce using deep metric learning. Upload product images to find similar items in 44,000+ products.
 
+## Quick Start
+
+### Backend Setup
 ```bash
-pip install -r requirements.txt
+cd backend
+pip install -r requirements_api.txt
+python db_setup.py
+cd model && python save_embeddings.py && cd ..
+uvicorn api:app --host 0.0.0.0 --port 5000 --reload
 ```
 
-## Run main.py
-
-Train all models and evaluate:
-
+### Frontend Setup
 ```bash
-python main.py --epochs 30 --batch-size 64 --lr 0.001 --weight-decay 1e-4
+cd frontend
+npm install
+npm run dev
 ```
 
-Options:
-- `--epochs`: Number of epochs (default: 30)
-- `--batch-size`: Batch size (default: 32)
-- `--lr`: Learning rate (default: 0.001)
-- `--weight-decay`: Weight decay (default: 1e-4)
-- `--skip-train`: Skip training phase
-- `--skip-embeddings`: Skip embedding generation
-- `--skip-eval`: Skip evaluation
+Access at http://localhost:5173
 
-## Run save_embeddings.py
+## Features
 
-Precompute and save embeddings:
+- **Visual Search**: Upload images to find similar products
+- **Fast Retrieval**: <5ms queries with pre-computed embeddings
+- **44K Products**: Browse with category/gender filters
+- **Lazy Loading**: Optimized image rendering
+- **Responsive**: Desktop and mobile support
 
-```bash
-python save_embeddings.py --data-dir caltech-101 --weights-dir weights --output-dir embeddings --batch-size 64
+## Project Structure
+
+```
+├── frontend/          # React + Vite UI
+│   └── src/
+│       ├── components/   # UI components
+│       └── styles/       # CSS
+│
+├── backend/           # FastAPI server
+│   └── model/
+│       ├── weights/      # Pre-trained models
+│       └── embeddings/   # Vector embeddings
+│
+├── styles.csv         # Product data
+└── images.csv         # Image data
 ```
 
-Options:
-- `--data-dir`: Path to dataset (default: caltech-101)
-- `--weights-dir`: Directory with model weights (default: weights)
-- `--output-dir`: Output directory for embeddings (default: embeddings)
-- `--batch-size`: Batch size (default: 32)
-
-## Run evaluate.py
-
-Evaluate saved embeddings:
+## API Endpoints
 
 ```bash
-python evaluate.py --data-dir caltech-101 --embeddings-dir embeddings --output-dir graphs
+POST /api/visual-search       # Upload image to search
+GET /api/products              # Browse products
+GET /api/products/{id}         # Product details
+GET /api/categories            # Available filters
+GET /api/health                # API status
 ```
 
-Options:
-- `--data-dir`: Path to local dataset directory (default: caltech-101)
-- `--embeddings-dir`: Directory with precomputed embeddings (default: embeddings)
-- `--output-dir`: Directory to save results (default: graphs)
-- `--n-queries`: Number of query samples to visualize (default: 10)
-- `--query-indices`: Specific indices to visualize (overrides --n-queries)
+## Technologies
+
+- **Frontend**: React 19, Vite, JavaScript
+- **Backend**: FastAPI, PyTorch, SQLite
+- **ML**: ResNet50, Triplet/Contrastive Loss
+- **Query**: scikit-learn NearestNeighbors
+
+## Configuration
+
+### Backend Environment
+```bash
+API_HOST=0.0.0.0
+API_PORT=5000
+```
+
+### Frontend API
+Edit `frontend/src/App.jsx`:
+```javascript
+const API_BASE_URL = 'http://localhost:5000/api';
+```
+
+## Docker Deployment
+
+```bash
+cd backend
+docker build -t ecommerce-api .
+docker run -p 5000:5000 ecommerce-api
+```
+
+## Details
+
+- [Frontend Docs](frontend/README_FRONTEND.md)
+- [Backend Docs](backend/README_BACKEND.md)
