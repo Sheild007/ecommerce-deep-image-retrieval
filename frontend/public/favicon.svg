@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none">
+  <rect width="48" height="48" rx="8" fill="#863bff"/>
+  <g transform="translate(10, 8)">
+    <!-- Left vertical line of M -->
+    <rect x="0" y="0" width="3" height="24" rx="1.5" fill="white"/>
+    <!-- Left diagonal of M -->
+    <polygon points="3,0 9,12 12,12 6,0" fill="white"/>
+    <!-- Center diagonal of M -->
+    <polygon points="6,12 9,7 12,12" fill="white"/>
+    <!-- Right diagonal of M -->
+    <polygon points="12,12 15,7 18,12" fill="white"/>
+    <!-- Right vertical line of M -->
+    <rect x="15" y="12" width="3" height="12" rx="1.5" fill="white"/>
+  </g>
+</svg>

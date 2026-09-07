@@ -1,0 +1,12 @@
+# Training artifacts — do not commit
+__pycache__/
+*.pyc
+graphs/
+report.aux
+report.log
+report.out
+
+# Large training weights (keep only ONNX for production)
+# weights/*.pt is gitignored here — use ONNX instead
+# Uncomment the line below if you want to fully exclude .pt files:
+# weights/*.pt

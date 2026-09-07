@@ -1,0 +1,130 @@
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.site-header__inner {
+  width: min(1280px, 100%);
+  margin: 0 auto;
+  padding: 18px 20px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.brand {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--color-slate);
+  white-space: nowrap;
+}
+
+.header-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-soft);
+}
+
+.header-search__icon {
+  margin-left: 14px;
+  color: var(--color-muted);
+  flex: 0 0 auto;
+}
+
+.header-search__input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 12px 10px;
+  color: var(--color-text);
+}
+
+.header-search__input::placeholder {
+  color: var(--color-muted);
+}
+
+.header-search__input:focus {
+  outline: none;
+}
+
+.header-search:focus-within {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.header-search__camera {
+  border: 0;
+  border-left: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+
+.header-search__camera:hover {
+  color: var(--color-slate);
+}
+
+.header-search__file {
+  display: none;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-actions__button {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-slate);
+  display: grid;
+  place-items: center;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.header-actions__button:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-soft);
+}
+
+@media (max-width: 820px) {
+  .site-header__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 540px) {
+  .site-header__inner {
+    padding: 14px 12px;
+    gap: 12px;
+  }
+
+  .brand {
+    font-size: 1rem;
+  }
+
+  .header-search__camera,
+  .header-actions__button {
+    width: 40px;
+    height: 40px;
+  }
+}
