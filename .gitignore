@@ -5,6 +5,14 @@
 backend/.env
 frontend/.env.local
 
+# ─── Large ML binaries (upload to HF Spaces directly, not GitHub) ─────────────
+*.onnx
+*.npy
+*.pt
+*.pth
+*.db
+*.sqlite
+
 # ─── Python ───────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]

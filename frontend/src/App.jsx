@@ -6,7 +6,7 @@ import { Loader } from './components/Loader'
 import { EmptyState } from './components/EmptyState'
 import { useEffect, useMemo, useState } from 'react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:7860/api'
 const ITEMS_PER_PAGE = 50
 
 function App() {
