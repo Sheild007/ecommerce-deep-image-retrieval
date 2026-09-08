@@ -1,37 +1,47 @@
-import './App.css'
+import { useEffect, useState } from 'react'
 import Header from './components/Header'
-import Footer from './components/Footer'
 import ProductList from './components/ProductList'
-import { Loader } from './components/Loader'
-import { EmptyState } from './components/EmptyState'
-import { useEffect, useMemo, useState } from 'react'
+import Loader from './components/Loader'
+import EmptyState from './components/EmptyState'
+import Footer from './components/Footer'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:7860/api'
 const ITEMS_PER_PAGE = 50
 
 function App() {
   const [products, setProducts] = useState([])
+  const [totalProducts, setTotalProducts] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
-  
-  // Visual search states
-  const [visualSearchResults, setVisualSearchResults] = useState(null)
+
+  // Visual Search States
   const [visualSearchLoading, setVisualSearchLoading] = useState(false)
   const [visualSearchError, setVisualSearchError] = useState('')
+  const [visualSearchResults, setVisualSearchResults] = useState(null)
   const [uploadedImagePreview, setUploadedImagePreview] = useState(null)
   const [visibleCount, setVisibleCount] = useState(12)  // Initially show 12 items
 
-
+  // Fetch products from backend (Server-side pagination and filtering)
   useEffect(() => {
+    if (visualSearchResults) return // Don't fetch normal catalog if viewing visual search
+
     const fetchProducts = async () => {
       try {
         setLoading(true)
         setError('')
 
-        const response = await fetch(`${API_URL}/products?limit=50000&offset=0`)
+        const offset = (currentPage - 1) * ITEMS_PER_PAGE
+        const queryParams = new URLSearchParams({
+          limit: ITEMS_PER_PAGE,
+          offset: offset,
+          category: selectedCategory,
+          search: searchTerm
+        })
+
+        const response = await fetch(`${API_URL}/products?${queryParams}`)
         const data = await response.json()
 
         if (!response.ok || !data.success) {
@@ -39,36 +49,33 @@ function App() {
         }
 
         setProducts(data.products || [])
+        setTotalProducts(data.total || 0)
       } catch (err) {
-        setProducts([])
-        setError(err.message || 'Unable to load products')
+        setError(err.message)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchProducts()
-  }, [])
+    const timer = setTimeout(fetchProducts, 300) // Debounce search
+    return () => clearTimeout(timer)
+  }, [currentPage, searchTerm, selectedCategory, visualSearchResults])
 
-  // Handle image upload and search
   const handleImageSearch = async (file) => {
     try {
       setVisualSearchLoading(true)
       setVisualSearchError('')
       
-      // Preview the uploaded image
       const reader = new FileReader()
       reader.onload = (e) => {
         setUploadedImagePreview(e.target.result)
       }
       reader.readAsDataURL(file)
       
-      // Create FormData for file upload
       const formData = new FormData()
       formData.append('image', file)
       formData.append('k', 12)
       
-      // Call visual search endpoint
       const response = await fetch(`${API_URL}/visual-search`, {
         method: 'POST',
         body: formData
@@ -77,77 +84,48 @@ function App() {
       const data = await response.json()
       
       if (!response.ok || !data.success) {
-        throw new Error(data.detail || 'Visual search failed')
+        throw new Error(data.error || 'Failed to process visual search')
       }
       
       setVisualSearchResults({
         products: data.products || [],
         total: data.total_results || 0
       })
-      setVisibleCount(12)  // Reset to show first 12 items
+      setVisibleCount(12)
       setCurrentPage(1)
+      window.scrollTo({ top: document.getElementById('catalog').offsetTop - 20, behavior: 'smooth' })
     } catch (err) {
-      setVisualSearchError(err.message || 'Failed to perform visual search')
-      setVisualSearchResults(null)
+      setVisualSearchError(err.message)
       setUploadedImagePreview(null)
     } finally {
       setVisualSearchLoading(false)
     }
   }
 
-  // Clear visual search results and return to catalog
   const clearVisualSearch = () => {
     setVisualSearchResults(null)
     setUploadedImagePreview(null)
     setVisualSearchError('')
-    setCurrentPage(1)
     setVisibleCount(12)
   }
 
-  // Load more similar items (show 12 more)
   const loadMoreSimilarItems = () => {
     setVisibleCount(prev => Math.min(prev + 12, visualSearchResults.total))
   }
 
-  const filteredProducts = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase()
-
-    return products.filter((product) => {
-      const categoryMatch =
-        selectedCategory === 'All' ||
-        product.masterCategory === selectedCategory ||
-        product.gender === selectedCategory
-
-      const searchMatch =
-        !query ||
-        product.productDisplayName?.toLowerCase().includes(query) ||
-        product.baseColour?.toLowerCase().includes(query) ||
-        product.articleType?.toLowerCase().includes(query) ||
-        product.subCategory?.toLowerCase().includes(query) ||
-        product.gender?.toLowerCase().includes(query)
-
-      return categoryMatch && searchMatch
-    })
-  }, [products, searchTerm, selectedCategory])
-
+  // Reset page to 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
   }, [searchTerm, selectedCategory])
 
-  // Use visual search results if available, otherwise use filtered products
-  const displayProducts = visualSearchResults ? visualSearchResults.products : filteredProducts
-  
-  // For visual search: show only visibleCount items
+  // Determine what to render
+  const displayProducts = visualSearchResults ? visualSearchResults.products : products
   const productsToDisplay = visualSearchResults 
     ? displayProducts.slice(0, visibleCount)
     : displayProducts
-  
-  const totalPages = Math.max(1, Math.ceil(productsToDisplay.length / ITEMS_PER_PAGE))
-  const safePage = Math.min(currentPage, totalPages)
-  const startIndex = (safePage - 1) * ITEMS_PER_PAGE
-  const endIndex = startIndex + ITEMS_PER_PAGE
-  const currentProducts = productsToDisplay.slice(startIndex, endIndex)
 
+  const totalPages = Math.max(1, Math.ceil(totalProducts / ITEMS_PER_PAGE))
+  
   const handlePreviousPage = () => {
     setCurrentPage((page) => Math.max(1, page - 1))
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -160,8 +138,8 @@ function App() {
 
   const categories = ['All', 'Apparel', 'Accessories', 'Footwear', 'Personal Care', 'Men', 'Women', 'Boys', 'Girls']
 
-  const resultsStart = displayProducts.length === 0 ? 0 : startIndex + 1
-  const resultsEnd = Math.min(endIndex, displayProducts.length)
+  const resultsStart = displayProducts.length === 0 ? 0 : ((currentPage - 1) * ITEMS_PER_PAGE) + 1
+  const resultsEnd = Math.min(currentPage * ITEMS_PER_PAGE, totalProducts)
 
   return (
     <div className="App">
@@ -236,7 +214,7 @@ function App() {
             <section className="filter-section" aria-label="Categories">
               <div className="section-heading">
                 <h2>Browse</h2>
-                <p>{products.length.toLocaleString()} products available</p>
+                <p>{totalProducts.toLocaleString()} products available</p>
               </div>
 
               <div className="category-filter">
@@ -261,8 +239,11 @@ function App() {
                   {visualSearchResults ? 'Similar Products' : 'Selected products'}
                 </h1>
                 <p className="results-summary">
-                  {displayProducts.length.toLocaleString()} items
-                  {displayProducts.length > 0 && ` · Showing ${resultsStart}-${resultsEnd}`}
+                  {visualSearchResults 
+                    ? `${productsToDisplay.length.toLocaleString()} items`
+                    : `${totalProducts.toLocaleString()} items total`
+                  }
+                  {!visualSearchResults && totalProducts > 0 && ` · Showing ${resultsStart}-${resultsEnd}`}
                 </p>
               </div>
             </div>
@@ -280,25 +261,27 @@ function App() {
             ) : loading && !visualSearchResults ? (
               <div className="loading-state">
                 <Loader size="lg" label="Loading products" />
-                <p>Loading products</p>
+                <p>Loading catalog...</p>
               </div>
             ) : error && !visualSearchResults ? (
               <EmptyState title="Products unavailable" description={error} />
-            ) : displayProducts.length === 0 ? (
+            ) : productsToDisplay.length === 0 ? (
               <EmptyState
                 title={visualSearchResults ? "No similar products found" : "No products match your filters"}
                 description={visualSearchResults ? "Try uploading a different image" : "Try a different search term or clear one of the category filters."}
               />
             ) : (
               <>
-                <ProductList products={currentProducts} />
+                <ProductList products={productsToDisplay} />
 
                 {visualSearchResults && visibleCount < visualSearchResults.total && (
                   <div style={{ 
                     display: 'flex', 
                     justifyContent: 'center', 
                     padding: '24px',
-                    gap: '12px'
+                    gap: '12px',
+                    flexDirection: 'column',
+                    alignItems: 'center'
                   }}>
                     <button
                       type="button"
@@ -333,20 +316,20 @@ function App() {
                       type="button"
                       className="pagination-btn"
                       onClick={handlePreviousPage}
-                      disabled={safePage === 1}
+                      disabled={currentPage === 1}
                     >
                       Previous
                     </button>
 
                     <span className="pagination-status">
-                      Page {safePage} of {totalPages}
+                      Page {currentPage} of {totalPages}
                     </span>
 
                     <button
                       type="button"
                       className="pagination-btn"
                       onClick={handleNextPage}
-                      disabled={safePage === totalPages}
+                      disabled={currentPage === totalPages}
                     >
                       Next
                     </button>
@@ -364,4 +347,3 @@ function App() {
 }
 
 export default App
-
