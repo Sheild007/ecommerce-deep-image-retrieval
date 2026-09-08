@@ -60,7 +60,7 @@
   background: var(--color-surface-soft);
   color: var(--color-text);
   padding: 10px 14px;
-  border-radius: 999px;
+  border-radius: var(--radius);
   font-size: var(--font-size-sm);
   transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
 }

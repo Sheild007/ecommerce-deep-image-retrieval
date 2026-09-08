@@ -285,17 +285,8 @@ function App() {
                   }}>
                     <button
                       type="button"
+                      className="pagination-btn"
                       onClick={loadMoreSimilarItems}
-                      style={{
-                        padding: '12px 24px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--color-border)',
-                        background: 'var(--color-primary)',
-                        color: 'white',
-                        cursor: 'pointer',
-                        fontSize: '16px',
-                        fontWeight: '500'
-                      }}
                     >
                       Load More Similar Items
                     </button>
