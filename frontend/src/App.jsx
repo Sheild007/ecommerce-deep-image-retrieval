@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import Header from './components/Header'
 import ProductList from './components/ProductList'
-import Loader from './components/Loader'
-import EmptyState from './components/EmptyState'
+import { Loader } from './components/Loader'
+import { EmptyState } from './components/EmptyState'
 import Footer from './components/Footer'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:7860/api'
